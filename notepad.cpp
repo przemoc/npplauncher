@@ -14,7 +14,7 @@
 
 /*
  * Notepad++ launcher (for Windows notepad.exe replacement)
- * version 0.1
+ * version 0.2
  */
 
 /*
@@ -33,24 +33,26 @@
 #include <windows.h>
 #include <winreg.h>
 
-int WINAPI WinMain(HINSTANCE hThisInstance,
+int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
-                   LPSTR lpszArgument,
-                   int nFunsterStil)
+                   LPSTR lpCmdLine,
+                   int nCmdShow)
 
 {
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
 	HKEY hKey;
-	DWORD exitcode = 1,
-	      arglen = strlen(lpszArgument);
+	HWND hWnd;
+	DWORD dwProcessId,
+	      dwExitCode = 1,
+	      dwCmdLineLen = strlen(lpCmdLine);
 	char cmd[1024] = "\"C:\\Program Files\\Notepad++\\notepad++.exe\"";
 
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 	ZeroMemory(&pi, sizeof(pi));
 
-	/* Getting path to Notepad++ from registry */
+	/* Getting path to Notepad++ from registry. */
 	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Notepad++", 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
 	{
 		DWORD iType,
@@ -67,26 +69,26 @@ int WINAPI WinMain(HINSTANCE hThisInstance,
 		RegCloseKey(hKey);
 	}
 
-	/* Command-line construction */
-	if (arglen)
+	/* Command-line construction. */
+	if (dwCmdLineLen)
 	{
 		strcat(cmd, " \"");
-		if (lpszArgument[0] != '\"')
+		if (lpCmdLine[0] != '\"')
 		{
-			_fullpath(cmd + strlen(cmd), lpszArgument, 1000);
+			_fullpath(cmd + strlen(cmd), lpCmdLine, 1000);
 		}
 		else
 		{
-			if (lpszArgument[arglen - 1] == '\"')
+			if (lpCmdLine[dwCmdLineLen - 1] == '\"')
 			{
-				lpszArgument[arglen - 1] = '\0';
+				lpCmdLine[dwCmdLineLen - 1] = '\0';
 			}
-			_fullpath(cmd + strlen(cmd), lpszArgument + 1, 1000);
+			_fullpath(cmd + strlen(cmd), lpCmdLine + 1, 1000);
 		}
 		strcat(cmd, "\"");
 	}
 
-	/* Notepad++ launching */
+	/* Notepad++ launching. */
 	if (CreateProcess(
 		NULL,	/* No module name (use command line) */
 		cmd,	/* Command line */
@@ -104,20 +106,34 @@ int WINAPI WinMain(HINSTANCE hThisInstance,
 		   Without any WaitFor* functions this launcher was useless,
 		   when it was used in conjuction with file archivers (e.g. 7-Zip)
 		   or other applications that provides files temporarily. */
-#if WAIT_FOR_EXIT == 0
+
 		/* Wait until Notepad++ has finished its initialization */
 		WaitForInputIdle(pi.hProcess, INFINITE);
-		exitcode = 0;
+
+		/* Find Notepad++ window */
+		hWnd = GetTopWindow(0);
+		while (hWnd) {
+			GetWindowThreadProcessId(hWnd, &dwProcessId);
+			if (dwProcessId == pi.dwProcessId) {
+				/* And move it to the top. */
+				SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_ASYNCWINDOWPOS | SWP_NOMOVE | SWP_NOSIZE);
+				break;
+			}
+			hWnd = GetNextWindow(hWnd, GW_HWNDNEXT);
+		}
+
+#if WAIT_FOR_EXIT == 0
+		dwExitCode = 0;
 #else
 		/* Wait until Notepad++ exits. */
 		WaitForSingleObject(pi.hProcess, INFINITE);
-		GetExitCodeProcess(pi.hProcess, &exitcode);
+		GetExitCodeProcess(pi.hProcess, &dwExitCode);
 #endif
 
-		/* Close process and thread handles */
+		/* Close process and thread handles. */
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
 	}
 
-	return exitcode;
+	return dwExitCode;
 }

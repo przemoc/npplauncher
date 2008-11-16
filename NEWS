@@ -1,3 +1,7 @@
+* What's new in version 0.2
+
+- Always move Notepad++ window to the top.
+
 * What's new in version 0.1 (refering to last Stépho's version)
 
 - WaitForInputIdle()/WaitForSingleObject() functions are now called to ensure
