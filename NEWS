@@ -1,3 +1,19 @@
+* What's new in version 0.5
+
+- 64-bit Windows are supported now.
+
+- Built-in installer is available. Rename executable file to install.exe if
+  you want to use it. Installer copies .exe as notepad.exe to 4 locations:
+  - %WINDIR%\ServicePackFiles\i386\
+  - %WINDIR%\system32\dllcache\
+  - %WINDIR%\system32\
+  - %WINDIR%\
+  But before, it tries to bypass System File Checker/Windows File Protection.
+
+- Moving Notepad++ window to the top has been fixed.
+
+- Building toolchain has changed from MinGW to MinGW-W64.
+
 * What's new in version 0.2
 
 - Always move Notepad++ window to the top.
