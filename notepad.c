@@ -29,6 +29,10 @@ int WINAPI WinMain(HINSTANCE hInstance,
                    LPSTR lpCmdLine,
                    int nCmdShow)
 {
+	(void)hInstance;
+	(void)hPrevInstance;
+	(void)nCmdShow;
+
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
 	HKEY hKey;
