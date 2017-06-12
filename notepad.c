@@ -20,6 +20,10 @@
 
 #define _ISOC99_SOURCE
 
+#ifndef WAIT_FOR_EXIT
+#define WAIT_FOR_EXIT 1
+#endif
+
 #include <windows.h>
 #include <winreg.h>
 
