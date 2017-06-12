@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2005 Stephane Chambrin <superstepho@yahoo.fr>
- * Copyright (C) 2008-2009 Przemyslaw Pawelczyk <przemoc@gmail.com>
+ * Copyright (C) 2008-2009,2017 Przemyslaw Pawelczyk <przemoc@gmail.com>
  *
  * This software is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2.
