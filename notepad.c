@@ -23,11 +23,6 @@
 #include <windows.h>
 #include <winreg.h>
 
-#ifndef COPY_FILE_ALLOW_DECRYPTED_DESTINATION
-#define COPY_FILE_ALLOW_DECRYPTED_DESTINATION	0x00000008
-#endif
-
-typedef DWORD(__stdcall *SFE) (DWORD param1, PWCHAR param2, DWORD param3);
 
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
@@ -38,11 +33,9 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	STARTUPINFO si;
 	HKEY hKey;
 	HWND hWnd;
-	HINSTANCE hInst;
 	DWORD dwProcessId,
 	      dwExitCode = 1,
 	      dwCmdLineLen = strlen(lpCmdLine);
-	WCHAR szPath[MAX_PATH];
 	TCHAR cmd[1024],
 #if __x86_64__
 	      szNotepadKey[] = "SOFTWARE\\Wow6432Node\\Notepad++",
@@ -51,32 +44,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	      szNotepadKey[] = "SOFTWARE\\Notepad++",
 	      szProgFilesVar[] = "ProgramFiles";
 #endif
-
-	if (GetModuleFileNameW(NULL, szPath, MAX_PATH) && !wcsicmp(&szPath[wcslen(szPath) - 11], L"install.exe") && (hInst = LoadLibrary("sfc_os.dll"))) {
-		WCHAR *szNotepadPaths[] = {
-			L"\\ServicePackFiles\\i386\\notepad.exe",
-			L"\\system32\\dllcache\\notepad.exe",
-			L"\\system32\\notepad.exe",
-			L"\\notepad.exe",
-			L"\0"
-		};
-		WCHAR szSfc[MAX_PATH];
-		DWORD dwWinDirLen;
-
-		GetEnvironmentVariableW(L"WINDIR", szSfc, MAX_PATH);
-		dwWinDirLen = wcslen(szSfc);
-		SFE SfcFileException = (SFE)GetProcAddress(hInst, (LPCSTR) 5);
-
-		for (WCHAR **szNotepadPath = szNotepadPaths; *szNotepadPath[0] != 0; ++szNotepadPath) {
-			wcsncpy(&szSfc[dwWinDirLen], *szNotepadPath, MAX_PATH - dwWinDirLen);
-			if (SfcFileException)
-				SfcFileException(0, szSfc, (DWORD) -1);
-			CopyFileExW(szPath, szSfc, NULL, NULL, NULL, COPY_FILE_ALLOW_DECRYPTED_DESTINATION);
-		}
-
-		MessageBox(NULL, "Installation is finished! You can remove this file.", "Notepad++ Launcher", MB_ICONINFORMATION);
-		exit(0);
-	}
 
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
