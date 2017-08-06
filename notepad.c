@@ -14,7 +14,7 @@
 
 /*
  * Notepad++ launcher (for Windows notepad.exe replacement)
- * version 0.5
+ * version 0.6
  */
 
 
@@ -26,12 +26,50 @@
 
 #include <windows.h>
 #include <winreg.h>
+#include <io.h>
+
+#ifndef __x86_64__
+#define __x86_64__ 0
+#endif
 
 
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow)
+static long
+query_regkey(HKEY hkey, char *subkey, ULONG rights,
+             char *buf, unsigned long *siz)
+{
+	LONG res;
+	HKEY hsubkey;
+
+	res = RegOpenKeyEx(hkey, subkey, 0, KEY_QUERY_VALUE | rights, &hsubkey);
+	if (res != ERROR_SUCCESS)
+		return res;
+
+	res = RegQueryValueEx(hsubkey, "", NULL, /* type */ NULL, (LPBYTE)buf, siz);
+
+	RegCloseKey(hsubkey);
+
+	return res;
+}
+
+
+static long
+query_envvar(char *envvar, char *buf, unsigned long *siz)
+{
+	LONG res;
+
+	res = GetEnvironmentVariable(envvar, buf, *siz);
+	if (res)
+		*siz = res;
+
+	return !res;
+}
+
+
+int WINAPI
+WinMain(HINSTANCE hInstance,
+        HINSTANCE hPrevInstance,
+        LPSTR lpCmdLine,
+        int nCmdShow)
 {
 	(void)hInstance;
 	(void)hPrevInstance;
@@ -39,52 +77,89 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
-	HKEY hKey;
 	HWND hWnd;
+	BOOL bIsWow64 = FALSE;
 	DWORD dwProcessId;
 	DWORD dwExitCode = 1;
 	DWORD dwCmdLineLen = strlen(lpCmdLine);
 	TCHAR cmd[1024];
-#if __x86_64__
-	TCHAR szNotepadKey[] = "SOFTWARE\\Wow6432Node\\Notepad++";
-	TCHAR szProgFilesVar[] = "ProgramFiles(x86)";
-#else
 	TCHAR szNotepadKey[] = "SOFTWARE\\Notepad++";
 	TCHAR szProgFilesVar[] = "ProgramFiles";
+#if __x86_64__
+	TCHAR szProgFilesAltVar[] = "ProgramFiles(x86)";
+#else
+	TCHAR szProgFilesAltVar[] = "ProgramW6432";
 #endif
+	unsigned long siz;
+	long res;
+	int found = 0;
 
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 	ZeroMemory(&pi, sizeof(pi));
 
+	IsWow64Process(GetCurrentProcess(), &bIsWow64);
+
+	cmd[0] = '"';
+
 	/* Getting path to Notepad++ from registry. */
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, szNotepadKey, 0, KEY_QUERY_VALUE,
-	                 &hKey) == ERROR_SUCCESS
-	   ) {
-		DWORD iType;
-		DWORD iDataSize = 1024;
-		unsigned char sData[1024];
-
-		if (RegQueryValueEx(hKey, "", NULL, &iType, sData, &iDataSize)
-		    == ERROR_SUCCESS
-		   ) {
-			strcpy(cmd, "\"");
-			strncat(cmd, (TCHAR*) sData, sizeof(cmd) - 1);
-			strncat(cmd, "\\notepad++.exe\"",
-			        sizeof(cmd) - 1 - iDataSize);
+	if (!found) {
+		siz = sizeof(cmd) - 3;
+		res = query_regkey(HKEY_LOCAL_MACHINE, szNotepadKey,
+		                   0,
+		                   &cmd[1], &siz);
+		if (!res) {
+			siz--; /* terminating null */
+			strncpy(&cmd[1 + siz],
+			        "\\notepad++.exe", sizeof(cmd) - 2 - siz);
+			found += !access(&cmd[1], 00);
+			cmd[1 + siz + sizeof("\\notepad++.exe") - 1] = '"';
 		}
+	}
 
-		RegCloseKey(hKey);
+	/* Getting path to Notepad++ from registry - alternative way. */
+	if (!found && (bIsWow64 || __x86_64__)) {
+		siz = sizeof(cmd) - 3;
+		res = query_regkey(HKEY_LOCAL_MACHINE, szNotepadKey,
+		                   bIsWow64 ? KEY_WOW64_64KEY : KEY_WOW64_32KEY,
+		                   &cmd[1], &siz);
+		if (!res) {
+			siz--; /* terminating null */
+			strncpy(&cmd[1 + siz],
+			        "\\notepad++.exe", sizeof(cmd) - 2 - siz);
+			found += !access(&cmd[1], 00);
+			cmd[1 + siz + sizeof("\\notepad++.exe") - 1] = '"';
+		}
 	}
+
 	/* Use the default path if no info in registry. */
-	else {
-		DWORD iVarSize;
-		strcpy(cmd, "\"");
-		iVarSize = GetEnvironmentVariable(szProgFilesVar, &cmd[1],
-		                                  MAX_PATH - 1);
-		strncat(cmd, "\\Notepad++\\notepad++.exe\"",
-		        sizeof(cmd) - 1 - iVarSize);
+	if (!found) {
+		siz = sizeof(cmd) - 3;
+		res = query_envvar(szProgFilesVar, &cmd[1], &siz);
+
+		if (!res) {
+			strncpy(&cmd[1 + siz],
+			        "\\Notepad++\\notepad++.exe", sizeof(cmd) - 2 - siz);
+			found += !access(&cmd[1], 00);
+			cmd[1 + siz + sizeof("\\Notepad++\\notepad++.exe") - 1] = '"';
+		}
 	}
+
+	/* Use the default path if no info in registry - alternative way. */
+	if (!found && (bIsWow64 || __x86_64__)) {
+		siz = sizeof(cmd) - 3;
+		res = query_envvar(szProgFilesAltVar, &cmd[1], &siz);
+
+		if (!res) {
+			strncpy(&cmd[1 + siz],
+			        "\\Notepad++\\notepad++.exe", sizeof(cmd) - 2 - siz);
+			found += !access(&cmd[1], 00);
+			cmd[1 + siz + sizeof("\\Notepad++\\notepad++.exe") - 1] = '"';
+		}
+	}
+
+	if (!found)
+		return 111;
 
 	/* Command-line construction. */
 	if (dwCmdLineLen) {
