@@ -41,16 +41,16 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	STARTUPINFO si;
 	HKEY hKey;
 	HWND hWnd;
-	DWORD dwProcessId,
-	      dwExitCode = 1,
-	      dwCmdLineLen = strlen(lpCmdLine);
-	TCHAR cmd[1024],
+	DWORD dwProcessId;
+	DWORD dwExitCode = 1;
+	DWORD dwCmdLineLen = strlen(lpCmdLine);
+	TCHAR cmd[1024];
 #if __x86_64__
-	      szNotepadKey[] = "SOFTWARE\\Wow6432Node\\Notepad++",
-	      szProgFilesVar[] = "ProgramFiles(x86)";
+	TCHAR szNotepadKey[] = "SOFTWARE\\Wow6432Node\\Notepad++";
+	TCHAR szProgFilesVar[] = "ProgramFiles(x86)";
 #else
-	      szNotepadKey[] = "SOFTWARE\\Notepad++",
-	      szProgFilesVar[] = "ProgramFiles";
+	TCHAR szNotepadKey[] = "SOFTWARE\\Notepad++";
+	TCHAR szProgFilesVar[] = "ProgramFiles";
 #endif
 
 	ZeroMemory(&si, sizeof(si));
@@ -58,15 +58,20 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	ZeroMemory(&pi, sizeof(pi));
 
 	/* Getting path to Notepad++ from registry. */
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, szNotepadKey, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS) {
-		DWORD iType,
-		      iDataSize = 1024;
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, szNotepadKey, 0, KEY_QUERY_VALUE,
+	                 &hKey) == ERROR_SUCCESS
+	   ) {
+		DWORD iType;
+		DWORD iDataSize = 1024;
 		unsigned char sData[1024];
 
-		if (RegQueryValueEx(hKey, "", NULL, &iType, sData, &iDataSize) == ERROR_SUCCESS) {
+		if (RegQueryValueEx(hKey, "", NULL, &iType, sData, &iDataSize)
+		    == ERROR_SUCCESS
+		   ) {
 			strcpy(cmd, "\"");
 			strncat(cmd, (TCHAR*) sData, sizeof(cmd) - 1);
-			strncat(cmd, "\\notepad++.exe\"", sizeof(cmd) - 1 - iDataSize);
+			strncat(cmd, "\\notepad++.exe\"",
+			        sizeof(cmd) - 1 - iDataSize);
 		}
 
 		RegCloseKey(hKey);
@@ -75,40 +80,45 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	else {
 		DWORD iVarSize;
 		strcpy(cmd, "\"");
-		iVarSize = GetEnvironmentVariable(szProgFilesVar, &cmd[1], MAX_PATH - 1);
-		strncat(cmd, "\\Notepad++\\notepad++.exe\"", sizeof(cmd) - 1 - iVarSize);
+		iVarSize = GetEnvironmentVariable(szProgFilesVar, &cmd[1],
+		                                  MAX_PATH - 1);
+		strncat(cmd, "\\Notepad++\\notepad++.exe\"",
+		        sizeof(cmd) - 1 - iVarSize);
 	}
 
 	/* Command-line construction. */
 	if (dwCmdLineLen) {
 		strncat(cmd, " \"", sizeof(cmd) - strlen(cmd));
 		if (lpCmdLine[0] != '\"')
-			_fullpath(cmd + strlen(cmd), lpCmdLine, sizeof(cmd) - strlen(cmd));
+			_fullpath(cmd + strlen(cmd), lpCmdLine,
+			          sizeof(cmd) - strlen(cmd));
 		else {
 			if (lpCmdLine[dwCmdLineLen - 1] == '\"')
 				lpCmdLine[dwCmdLineLen - 1] = '\0';
-			_fullpath(cmd + strlen(cmd), lpCmdLine + 1, sizeof(cmd) - strlen(cmd));
+			_fullpath(cmd + strlen(cmd), lpCmdLine + 1,
+			          sizeof(cmd) - strlen(cmd));
 		}
 		strncat(cmd, "\"", sizeof(cmd) - strlen(cmd));
 	}
 
 	/* Notepad++ launching. */
 	if (CreateProcess(
-		NULL,	/* No module name (use command line) */
-		cmd,	/* Command line */
-		NULL,	/* Process handle not inheritable */
-		NULL,	/* Thread handle not inheritable */
-		FALSE,	/* Set handle inheritance to FALSE */
-		0,	/* No creation flags */
-		NULL,	/* Use parent's environment block */
-		NULL,	/* Use parent's starting directory */
-		&si,	/* Pointer to STARTUPINFO structure */
-		&pi	/* Pointer to PROCESS_INFORMATION structure */
-	)) {
+	                  NULL,  /* No module name (use command line) */
+	                  cmd,   /* Command line */
+	                  NULL,  /* Process handle not inheritable */
+	                  NULL,  /* Thread handle not inheritable */
+	                  FALSE, /* Set handle inheritance to FALSE */
+	                  0,     /* No creation flags */
+	                  NULL,  /* Use parent's environment block */
+	                  NULL,  /* Use parent's starting directory */
+	                  &si,   /* Pointer to STARTUPINFO structure */
+	                  &pi    /* Pointer to PROCESS_INFORMATION structure */
+	    )
+	   ) {
 
 		/* Przemoc's note:
 		   Without any WaitFor* functions this launcher was useless,
-		   when it was used in conjuction with file archivers (e.g. 7-Zip)
+		   when it was used in conjuction with file archivers (e.g. 7z)
 		   or other applications that provides files temporarily. */
 
 		/* Wait until Notepad++ has finished its initialization */
@@ -120,7 +130,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
 			GetWindowThreadProcessId(hWnd, &dwProcessId);
 			if (dwProcessId == pi.dwProcessId) {
 				/* And move it to the top. */
-				SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0,
+				             SWP_NOMOVE | SWP_NOSIZE);
 				break;
 			}
 			hWnd = GetNextWindow(hWnd, GW_HWNDNEXT);
