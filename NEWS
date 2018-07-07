@@ -1,3 +1,8 @@
+* What's new in version 0.6a
+
+- cmd.exe window is not showing anymore.
+  Regression has been introduced in previous version (0.6).
+
 * What's new in version 0.6
 
 - Notepad++ searching includes now 64/32-bit counterpart.
