@@ -73,6 +73,7 @@ BIN_EXT := .exe
 $(BIN):
 	@echo "        CCLD    $@"
 	$(HIDE)$(CCLD) $(LDFLAGS) $(TARGET_ARCH) -o $@ $^ \
+	 -mwindows \
 	 -Wl,-Bstatic $($@_SLIBS) -Wl,-Bdynamic $($@_DLIBS)
 
 .PHONY: strip
